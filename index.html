@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>🥗 Vitality Catcher</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: radial-gradient(ellipse at center, #1a3a1a 0%, #0a1a0a 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+#game {
+  position: relative;
+  width: 420px;
+  height: 680px;
+  background: linear-gradient(180deg,
+    #87CEEB 0%, #B0E0FF 30%, #C8F0B0 65%, #4a9e2a 80%, #2d6b15 100%);
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 0 0 3px rgba(255,255,255,0.1), 0 24px 80px rgba(0,0,0,0.7);
+  cursor: none;
+}
+
+/* Animated sky layers */
+.cloud {
+  position: absolute;
+  font-size: 36px;
+  opacity: 0.65;
+  animation: drift linear infinite;
+  pointer-events: none;
+  top: var(--t);
+  animation-duration: var(--dur);
+  animation-delay: var(--delay);
+  font-size: var(--sz);
+}
+@keyframes drift {
+  from { transform: translateX(-80px); }
+  to   { transform: translateX(500px); }
+}
+
+/* Sun */
+#sun {
+  position: absolute;
+  top: 14px;
+  right: 24px;
+  font-size: 42px;
+  pointer-events: none;
+  filter: drop-shadow(0 0 12px rgba(255,220,0,0.7));
+  animation: sunPulse 3s ease-in-out infinite;
+}
+@keyframes sunPulse {
+  0%,100% { filter: drop-shadow(0 0 12px rgba(255,220,0,0.7)); }
+  50%      { filter: drop-shadow(0 0 22px rgba(255,220,0,1)); }
+}
+
+/* Ground strip */
+#ground {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  height: 90px;
+  background: linear-gradient(180deg, #3a8a1a 0%, #1e5a0a 100%);
+  pointer-events: none;
+}
+#ground::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 8px;
+  background: #5cbf2a;
+  border-radius: 4px;
+}
+#ground::after {
+  content: '🌿 🌱 🌿 🌱 🌿 🌱 🌿 🌱 🌿 🌱 🌿';
+  position: absolute;
+  top: -14px; left: 4px;
+  font-size: 18px;
+  letter-spacing: 6px;
+  opacity: 0.7;
+  white-space: nowrap;
+  overflow: hidden;
+  width: 100%;
+}
+
+/* Falling items */
+.food-item {
+  position: absolute;
+  font-size: 40px;
+  line-height: 1;
+  pointer-events: none;
+  transform: translateX(-50%);
+  filter: drop-shadow(2px 4px 6px rgba(0,0,0,0.25));
+  will-change: top;
+  transition: transform 0.1s ease;
+}
+.food-item.caught {
+  animation: catchPop 0.25s ease-out forwards;
+}
+@keyframes catchPop {
+  0%   { transform: translateX(-50%) scale(1); }
+  50%  { transform: translateX(-50%) scale(1.6); }
+  100% { transform: translateX(-50%) scale(0); opacity: 0; }
+}
+
+/* Basket */
+#basket {
+  position: absolute;
+  font-size: 54px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 10;
+  filter: drop-shadow(0 6px 10px rgba(0,0,0,0.35));
+  will-change: left;
+}
+
+/* HUD */
+#hud {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  padding: 14px 16px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  z-index: 20;
+  pointer-events: none;
+}
+.hud-card {
+  background: rgba(255,255,255,0.82);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 16px;
+  padding: 8px 14px;
+  box-shadow: 0 2px 14px rgba(0,0,0,0.18);
+}
+#lives-display { font-size: 20px; letter-spacing: 3px; line-height: 1; }
+#score-box { text-align: right; }
+#score-num {
+  font-size: 30px;
+  font-weight: 900;
+  color: #1e6e00;
+  line-height: 1;
+}
+.score-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: #777;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+
+#level-badge {
+  position: absolute;
+  top: 82px;
+  left: 16px;
+  background: rgba(255,255,255,0.82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: 20px;
+  padding: 4px 14px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #444;
+  z-index: 20;
+  pointer-events: none;
+}
+#combo-badge {
+  position: absolute;
+  top: 82px;
+  right: 16px;
+  background: linear-gradient(135deg, #FF6B00, #FF9F1C);
+  border-radius: 20px;
+  padding: 4px 14px;
+  font-size: 13px;
+  font-weight: 800;
+  color: white;
+  z-index: 20;
+  display: none;
+  pointer-events: none;
+  box-shadow: 0 2px 8px rgba(255,107,0,0.4);
+  animation: comboPulse 0.4s ease-in-out infinite alternate;
+}
+@keyframes comboPulse {
+  from { transform: scale(1); }
+  to   { transform: scale(1.08); }
+}
+
+/* Score pop */
+.score-pop {
+  position: absolute;
+  font-size: 20px;
+  font-weight: 900;
+  pointer-events: none;
+  z-index: 30;
+  transform: translateX(-50%);
+  animation: popFloat 0.8s ease-out forwards;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+@keyframes popFloat {
+  0%   { transform: translateX(-50%) translateY(0) scale(0.8); opacity: 1; }
+  30%  { transform: translateX(-50%) translateY(-20px) scale(1.2); opacity: 1; }
+  100% { transform: translateX(-50%) translateY(-60px) scale(0.9); opacity: 0; }
+}
+
+/* Level-up toast */
+.levelup-toast {
+  position: absolute;
+  left: 50%;
+  top: 38%;
+  transform: translate(-50%, -50%);
+  background: linear-gradient(135deg, #2d8a2d, #4CAF50);
+  color: white;
+  font-size: 22px;
+  font-weight: 900;
+  padding: 12px 32px;
+  border-radius: 50px;
+  z-index: 35;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.3);
+  animation: toastPop 1.1s ease forwards;
+  pointer-events: none;
+  white-space: nowrap;
+}
+@keyframes toastPop {
+  0%   { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+  20%  { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+  70%  { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(0.9); opacity: 0; }
+}
+
+/* Flash overlays */
+#damage-flash {
+  position: absolute; inset: 0;
+  background: rgba(220, 30, 30, 0.4);
+  pointer-events: none; opacity: 0; z-index: 40;
+}
+#damage-flash.on { opacity: 1; }
+#good-flash {
+  position: absolute; inset: 0;
+  background: rgba(80, 220, 80, 0.25);
+  pointer-events: none; opacity: 0; z-index: 40;
+}
+#good-flash.on { opacity: 1; }
+
+/* Screen shake */
+@keyframes shake {
+  0%,100% { transform: none; }
+  15% { transform: translateX(-7px) rotate(-1deg); }
+  30% { transform: translateX(7px) rotate(1deg); }
+  50% { transform: translateX(-5px); }
+  70% { transform: translateX(5px); }
+  85% { transform: translateX(-3px); }
+}
+#game.shake { animation: shake 0.4s ease-out; }
+
+/* ── Screens ─────────────────────────────────────────────── */
+
+.overlay {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  z-index: 50; padding: 28px; text-align: center;
+}
+
+/* Menu */
+#menu-screen {
+  background: linear-gradient(160deg,
+    rgba(20,80,20,0.95) 0%, rgba(10,40,10,0.97) 100%);
+}
+
+.game-logo { font-size: 76px; margin-bottom: 10px; line-height: 1; }
+.game-title {
+  font-size: 52px; font-weight: 900; color: white;
+  line-height: 1; margin-bottom: 6px;
+  text-shadow: 0 3px 12px rgba(0,0,0,0.4);
+}
+.game-sub {
+  font-size: 14px; color: rgba(255,255,255,0.7);
+  font-weight: 500; margin-bottom: 24px;
+  letter-spacing: 0.5px;
+}
+
+.food-legend {
+  display: flex; gap: 14px; margin-bottom: 26px;
+}
+.legend-box {
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 16px; padding: 12px 18px;
+  backdrop-filter: blur(4px);
+  flex: 1;
+}
+.legend-box .leg-label {
+  font-size: 11px; font-weight: 700;
+  color: rgba(255,255,255,0.65);
+  text-transform: uppercase; letter-spacing: 1px;
+  margin-bottom: 7px;
+}
+.legend-box .leg-items { font-size: 24px; letter-spacing: 5px; }
+
+#hs-tag {
+  background: rgba(255,215,0,0.2);
+  border: 1.5px solid rgba(255,215,0,0.6);
+  color: #FFD700; border-radius: 50px;
+  padding: 5px 20px; font-size: 14px; font-weight: 700;
+  margin-bottom: 22px; display: none;
+}
+
+.btn-play {
+  background: #4CAF50;
+  background: linear-gradient(135deg, #56d056, #2d9e2d);
+  color: white;
+  border: none; border-radius: 50px;
+  padding: 17px 56px; font-size: 22px; font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 6px 24px rgba(76,175,80,0.5), 0 2px 0 rgba(0,0,0,0.2) inset;
+  font-family: inherit;
+  transition: transform 0.1s, box-shadow 0.1s;
+  letter-spacing: 0.5px;
+}
+.btn-play:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(76,175,80,0.6); }
+.btn-play:active { transform: translateY(1px); }
+
+.how-to-play {
+  margin-top: 16px;
+  font-size: 13px; color: rgba(255,255,255,0.5);
+}
+
+/* Game Over */
+#gameover-screen {
+  background: linear-gradient(160deg,
+    rgba(130,20,20,0.95) 0%, rgba(60,0,0,0.97) 100%);
+  display: none;
+}
+
+.go-icon { font-size: 64px; margin-bottom: 8px; line-height: 1; }
+.go-title {
+  font-size: 42px; font-weight: 900; color: white;
+  margin-bottom: 4px;
+}
+#go-msg { font-size: 16px; color: rgba(255,255,255,0.75); margin-bottom: 18px; }
+
+.stat-row {
+  display: flex; gap: 10px; margin-bottom: 16px; width: 100%;
+}
+.stat-card {
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 16px; padding: 14px 10px; flex: 1;
+  backdrop-filter: blur(4px);
+}
+.stat-icon { font-size: 22px; }
+.stat-val { font-size: 28px; font-weight: 900; color: white; line-height: 1.1; }
+.stat-lbl { font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.6); text-transform: uppercase; letter-spacing: 0.8px; }
+
+.health-tip-box {
+  background: rgba(255,255,255,0.12);
+  border-radius: 14px; padding: 13px 16px;
+  font-size: 13.5px; color: rgba(255,255,255,0.88);
+  line-height: 1.55; margin-bottom: 18px; width: 100%;
+  text-align: left;
+  border-left: 3px solid rgba(76,175,80,0.7);
+}
+
+.btn-again {
+  background: linear-gradient(135deg, #e05252, #c0392b);
+  color: white; border: none; border-radius: 50px;
+  padding: 15px 48px; font-size: 20px; font-weight: 900;
+  cursor: pointer; font-family: inherit; width: 100%;
+  box-shadow: 0 5px 18px rgba(192,57,43,0.5);
+  transition: transform 0.1s;
+  margin-bottom: 10px;
+}
+.btn-again:hover { transform: translateY(-2px); }
+.btn-again:active { transform: translateY(1px); }
+
+.btn-menu {
+  background: rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.85); border: 1.5px solid rgba(255,255,255,0.3);
+  border-radius: 50px; padding: 11px 36px; font-size: 15px; font-weight: 700;
+  cursor: pointer; font-family: inherit; width: 100%;
+  transition: background 0.15s;
+}
+.btn-menu:hover { background: rgba(255,255,255,0.25); }
+</style>
+</head>
+<body>
+
+<div id="game">
+
+  <!-- Sky decoration -->
+  <div id="sun">☀️</div>
+  <div class="cloud" style="--t:8%;--dur:18s;--delay:-3s;--sz:38px">☁️</div>
+  <div class="cloud" style="--t:5%;--dur:26s;--delay:-14s;--sz:26px;opacity:0.45">☁️</div>
+  <div class="cloud" style="--t:16%;--dur:21s;--delay:-8s;--sz:30px;opacity:0.55">☁️</div>
+  <div class="cloud" style="--t:11%;--dur:32s;--delay:-20s;--sz:22px;opacity:0.4">☁️</div>
+
+  <!-- Ground -->
+  <div id="ground"></div>
+
+  <!-- Flash overlays -->
+  <div id="damage-flash"></div>
+  <div id="good-flash"></div>
+
+  <!-- HUD -->
+  <div id="hud">
+    <div class="hud-card">
+      <div id="lives-display">❤️❤️❤️</div>
+    </div>
+    <div class="hud-card">
+      <div class="score-label">Score</div>
+      <div id="score-box">
+        <div id="score-num">0</div>
+      </div>
+    </div>
+  </div>
+  <div id="level-badge">Level 1</div>
+  <div id="combo-badge">🔥 0× Combo!</div>
+
+  <!-- Items + Basket (rendered by JS) -->
+  <div id="items-layer"></div>
+  <div id="basket">🧺</div>
+
+  <!-- ── Menu Screen ── -->
+  <div class="overlay" id="menu-screen">
+    <div class="game-logo">🥗</div>
+    <div class="game-title">Vitality<br>Catcher</div>
+    <div class="game-sub">Catch healthy foods · Dodge the junk</div>
+    <div id="hs-tag">🏆 Best Score: <span id="hs-val">0</span></div>
+    <div class="food-legend">
+      <div class="legend-box">
+        <div class="leg-label">✅ Catch</div>
+        <div class="leg-items">🍎🥦🫐</div>
+      </div>
+      <div class="legend-box">
+        <div class="leg-label">❌ Avoid</div>
+        <div class="leg-items">🍔🍩🥤</div>
+      </div>
+    </div>
+    <button class="btn-play" onclick="startGame()">Play Now!</button>
+    <div class="how-to-play">Move your mouse or drag to steer the basket</div>
+  </div>
+
+  <!-- ── Game Over Screen ── -->
+  <div class="overlay" id="gameover-screen">
+    <div class="go-icon">😵</div>
+    <div class="go-title">Game Over!</div>
+    <div id="go-msg">Better luck next time!</div>
+    <div class="stat-row">
+      <div class="stat-card">
+        <div class="stat-icon">⭐️</div>
+        <div class="stat-val" id="go-score">0</div>
+        <div class="stat-lbl">Score</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">🏆</div>
+        <div class="stat-val" id="go-best">0</div>
+        <div class="stat-lbl">Best</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">📈</div>
+        <div class="stat-val" id="go-level">1</div>
+        <div class="stat-lbl">Level</div>
+      </div>
+    </div>
+    <div class="health-tip-box" id="health-tip-text"></div>
+    <button class="btn-again" onclick="startGame()">▶  Play Again</button>
+    <button class="btn-menu" onclick="showMenu()">Main Menu</button>
+  </div>
+
+</div><!-- #game -->
+
+<script>
+// ─────────────────────────────────────────────
+//  DATA
+// ─────────────────────────────────────────────
+const HEALTHY = ['🍎','🥦','🥕','🫐','🍇','🥑','🍊','🍓','🥝','🌽','🫑','🍋','🥜','🫒'];
+const JUNK    = ['🍔','🍕','🍟','🍩','🧁','🍫','🥤','🌭','🍭','🎂','🍦','🧋'];
+const TIPS = [
+  '🍎 Apples are rich in fiber & vitamin C — perfect for gut health.',
+  '🥦 Broccoli has more vitamin C per gram than most citrus fruits!',
+  '🫐 Blueberries rank among the highest antioxidant foods on the planet.',
+  '🥕 Beta-carotene in carrots converts to vitamin A to support eye health.',
+  '🥑 Avocados are packed with heart-healthy monounsaturated fats.',
+  '🍇 Resveratrol in grapes helps protect your heart and blood vessels.',
+  '💧 Drinking enough water daily improves energy, focus & skin health.',
+  '🚶 Just 30 mins of brisk walking a day lowers risk of heart disease by 35%.',
+  '🥗 Eating more leafy greens is linked to slower cognitive aging.',
+  '🥝 Kiwi contains more vitamin C than an orange — and aids better sleep!',
+  '🍊 Vitamin C boosts your immune system and helps collagen production.',
+  '🌽 Corn is a whole grain packed with lutein for eye health.',
+];
+
+// ─────────────────────────────────────────────
+//  CONFIG
+// ─────────────────────────────────────────────
+const W = 420, H = 680;
+const BASKET_BOTTOM_OFFSET = 96; // px from bottom
+const BASKET_Y = H - BASKET_BOTTOM_OFFSET;
+const CATCH_RX = 58, CATCH_RY = 38;
+const ITEM_SIZE = 40;
+
+// ─────────────────────────────────────────────
+//  STATE
+// ─────────────────────────────────────────────
+let g = {};
+let raf = null, lastT = 0, spawnAcc = 0;
+
+function freshState() {
+  return {
+    phase: 'menu',
+    score: 0, lives: 3, combo: 0, level: 1,
+    items: [], nextId: 0,
+    basketX: W / 2,
+    spawnMs: 1050,
+    highScore: +localStorage.getItem('vhs') || 0,
+  };
+}
+
+// ─────────────────────────────────────────────
+//  DOM REFS
+// ─────────────────────────────────────────────
+const gameEl   = document.getElementById('game');
+const basketEl = document.getElementById('basket');
+const itemsL   = document.getElementById('items-layer');
+const scoreEl  = document.getElementById('score-num');
+const livesEl  = document.getElementById('lives-display');
+const lvlEl    = document.getElementById('level-badge');
+const comboEl  = document.getElementById('combo-badge');
+const menuScr  = document.getElementById('menu-screen');
+const goScr    = document.getElementById('gameover-screen');
+const dFlash   = document.getElementById('damage-flash');
+const gFlash   = document.getElementById('good-flash');
+
+// ─────────────────────────────────────────────
+//  INPUT
+// ─────────────────────────────────────────────
+function toGameX(clientX) {
+  const r = gameEl.getBoundingClientRect();
+  return (clientX - r.left) * (W / r.width);
+}
+
+gameEl.addEventListener('mousemove', e => {
+  if (g.phase === 'playing')
+    g.basketX = clamp(toGameX(e.clientX), 46, W - 46);
+});
+gameEl.addEventListener('touchmove', e => {
+  e.preventDefault();
+  if (g.phase === 'playing')
+    g.basketX = clamp(toGameX(e.touches[0].clientX), 46, W - 46);
+}, { passive: false });
+gameEl.addEventListener('touchstart', e => {
+  e.preventDefault();
+  if (g.phase === 'playing')
+    g.basketX = clamp(toGameX(e.touches[0].clientX), 46, W - 46);
+}, { passive: false });
+
+// Keyboard support
+document.addEventListener('keydown', e => {
+  if (g.phase !== 'playing') return;
+  const step = 18;
+  if (e.key === 'ArrowLeft')  g.basketX = clamp(g.basketX - step, 46, W - 46);
+  if (e.key === 'ArrowRight') g.basketX = clamp(g.basketX + step, 46, W - 46);
+});
+
+// ─────────────────────────────────────────────
+//  FLOW CONTROL
+// ─────────────────────────────────────────────
+function showMenu() {
+  if (raf) cancelAnimationFrame(raf);
+  g = freshState();
+  purgeItems();
+  menuScr.style.display  = 'flex';
+  goScr.style.display    = 'none';
+  const hs = +localStorage.getItem('vhs') || 0;
+  if (hs > 0) {
+    document.getElementById('hs-val').textContent = hs;
+    document.getElementById('hs-tag').style.display = 'block';
+  }
+}
+
+function startGame() {
+  if (raf) cancelAnimationFrame(raf);
+  g = freshState();
+  g.phase = 'playing';
+  purgeItems();
+  menuScr.style.display = 'none';
+  goScr.style.display   = 'none';
+  updateHUD();
+  lastT = performance.now();
+  spawnAcc = 0;
+  raf = requestAnimationFrame(loop);
+}
+
+function endGame() {
+  g.phase = 'gameover';
+  purgeItems();
+  const hs = Math.max(g.score, +localStorage.getItem('vhs') || 0);
+  localStorage.setItem('vhs', hs);
+  document.getElementById('go-score').textContent = g.score;
+  document.getElementById('go-best').textContent  = hs;
+  document.getElementById('go-level').textContent = g.level;
+  document.getElementById('go-msg').textContent =
+    g.score >= 500 ? '🏆 Incredible! You\'re a health champion!' :
+    g.score >= 300 ? '🌟 Amazing run! Keep eating healthy!' :
+    g.score >= 150 ? '💪 Great effort! You\'re on the right track.' :
+    g.score >= 50  ? '😊 Good start! Practice makes perfect.' :
+                     '🤔 Keep trying — every bite counts!';
+  document.getElementById('health-tip-text').textContent =
+    TIPS[g.score % TIPS.length];
+  goScr.style.display = 'flex';
+}
+
+// ─────────────────────────────────────────────
+//  GAME LOOP
+// ─────────────────────────────────────────────
+function loop(ts) {
+  if (g.phase !== 'playing') return;
+  const dt = Math.min(ts - lastT, 48);
+  lastT = ts;
+
+  // Spawn
+  spawnAcc += dt;
+  if (spawnAcc >= g.spawnMs) {
+    spawnAcc -= g.spawnMs;
+    spawnItem();
+  }
+
+  // Move & check
+  const dead = [];
+  for (const item of g.items) {
+    item.y += item.speed * (dt / 16);
+    item.el.style.top = item.y + 'px';
+
+    // Collision
+    if (
+      Math.abs(item.x - g.basketX) < CATCH_RX &&
+      item.y + ITEM_SIZE / 2 >= BASKET_Y - CATCH_RY &&
+      item.y - ITEM_SIZE / 2 <= BASKET_Y + CATCH_RY
+    ) {
+      dead.push(item.id);
+      item.isHealthy ? catchHealthy(item) : catchJunk(item);
+      continue;
+    }
+    if (item.y > H + 60) {
+      dead.push(item.id);
+      if (item.isHealthy) g.combo = 0;
+    }
+  }
+  killItems(dead);
+
+  // Render basket
+  basketEl.style.left   = g.basketX + 'px';
+  basketEl.style.bottom = (BASKET_BOTTOM_OFFSET - 30) + 'px';
+
+  updateHUD();
+  raf = requestAnimationFrame(loop);
+}
+
+// ─────────────────────────────────────────────
+//  SPAWN
+// ─────────────────────────────────────────────
+function spawnItem() {
+  const isHealthy = Math.random() > 0.33;
+  const emoji = isHealthy
+    ? HEALTHY[Math.floor(Math.random() * HEALTHY.length)]
+    : JUNK[Math.floor(Math.random() * JUNK.length)];
+
+  const x     = 38 + Math.random() * (W - 76);
+  const speed = (2.6 + Math.random() * 1.8) + (g.level - 1) * 0.32;
+
+  const el = document.createElement('div');
+  el.className = 'food-item';
+  el.textContent = emoji;
+  el.style.left = x + 'px';
+  el.style.top  = '-52px';
+  itemsL.appendChild(el);
+
+  g.items.push({ id: g.nextId++, emoji, isHealthy, x, y: -52, speed, el });
+}
+
+// ─────────────────────────────────────────────
+//  CATCH HANDLERS
+// ─────────────────────────────────────────────
+function catchHealthy(item) {
+  g.combo++;
+  const mult = Math.min(g.combo, 10);
+  const pts  = 10 * mult;
+  g.score   += pts;
+
+  const newLevel = Math.floor(g.score / 200) + 1;
+  if (newLevel !== g.level) {
+    g.level    = newLevel;
+    g.spawnMs  = Math.max(360, 1050 - (newLevel - 1) * 75);
+    showToast(`⬆️ Level ${g.level}!`);
+  }
+
+  popScore(item.x, item.y, `+${pts}`, g.combo > 3 ? '#FF6B00' : '#1e8e00');
+  burst(item.x, item.y, ['#4CAF50','#8BC34A','#CDDC39','#FFD700','#A5D6A7']);
+  flashEl(gFlash);
+}
+
+function catchJunk(item) {
+  g.combo   = 0;
+  g.lives   = Math.max(0, g.lives - 1);
+  popScore(item.x, item.y, '💀', '#d32f2f');
+  burst(item.x, item.y, ['#f44336','#FF5722','#FF9800','#E91E63']);
+  flashEl(dFlash);
+  shakeGame();
+  if (g.lives <= 0) setTimeout(endGame, 320);
+}
+
+// ─────────────────────────────────────────────
+//  VISUAL EFFECTS
+// ─────────────────────────────────────────────
+function flashEl(el) {
+  el.classList.add('on');
+  setTimeout(() => el.classList.remove('on'), 130);
+}
+
+function shakeGame() {
+  gameEl.classList.remove('shake');
+  void gameEl.offsetWidth; // reflow
+  gameEl.classList.add('shake');
+}
+
+function burst(cx, cy, colors) {
+  for (let i = 0; i < 10; i++) {
+    const el = document.createElement('div');
+    const size = 6 + Math.random() * 8;
+    el.style.cssText = `
+      position:absolute; width:${size}px; height:${size}px;
+      background:${colors[i % colors.length]};
+      border-radius:50%; pointer-events:none; z-index:35;
+      left:${cx}px; top:${cy}px;
+    `;
+    gameEl.appendChild(el);
+    const angle = (Math.PI * 2 * i) / 10 + Math.random() * 0.4;
+    const dist  = 28 + Math.random() * 38;
+    const tx = Math.cos(angle) * dist;
+    const ty = Math.sin(angle) * dist;
+    requestAnimationFrame(() => {
+      el.style.transition = `transform 0.55s ease-out, opacity 0.55s ease-out`;
+      el.style.transform  = `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px)) scale(0.1)`;
+      el.style.opacity    = '0';
+    });
+    setTimeout(() => el.remove(), 580);
+  }
+}
+
+function popScore(x, y, text, color) {
+  const el = document.createElement('div');
+  el.className = 'score-pop';
+  el.textContent = text;
+  el.style.left  = x + 'px';
+  el.style.top   = y + 'px';
+  el.style.color = color;
+  gameEl.appendChild(el);
+  setTimeout(() => el.remove(), 820);
+}
+
+function showToast(msg) {
+  const el = document.createElement('div');
+  el.className = 'levelup-toast';
+  el.textContent = msg;
+  gameEl.appendChild(el);
+  setTimeout(() => el.remove(), 1150);
+}
+
+// ─────────────────────────────────────────────
+//  HUD
+// ─────────────────────────────────────────────
+const HEART = '❤️', EMPTY = '🖤';
+function updateHUD() {
+  scoreEl.textContent = g.score;
+  livesEl.textContent = Array.from({length:3}, (_,i) => i < g.lives ? HEART : EMPTY).join('');
+  lvlEl.textContent   = `Level ${g.level}`;
+  if (g.combo > 2) {
+    comboEl.style.display  = 'block';
+    comboEl.textContent    = `🔥 ${g.combo}× Combo!`;
+  } else {
+    comboEl.style.display  = 'none';
+  }
+}
+
+// ─────────────────────────────────────────────
+//  HELPERS
+// ─────────────────────────────────────────────
+function purgeItems() {
+  for (const it of (g.items || [])) it.el?.remove();
+  if (g.items) g.items = [];
+  itemsL.innerHTML = '';
+}
+
+function killItems(ids) {
+  const s = new Set(ids);
+  g.items = g.items.filter(it => {
+    if (!s.has(it.id)) return true;
+    it.el.remove();
+    return false;
+  });
+}
+
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+// ─────────────────────────────────────────────
+//  BOOT
+// ─────────────────────────────────────────────
+showMenu();
+</script>
+</body>
+</html>
