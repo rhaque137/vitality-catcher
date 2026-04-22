@@ -473,16 +473,15 @@ function toGameX(clientX) {
   return (clientX - r.left) * (W / r.width);
 }
 
-// Prevent ANY page scroll while the game is visible
+// Block scroll/bounce but never block touchstart — that breaks button taps on iOS
 document.addEventListener('touchmove', e => e.preventDefault(), { passive: false });
-document.addEventListener('touchstart', e => e.preventDefault(), { passive: false });
 
 gameEl.addEventListener('mousemove', e => {
   if (g.phase === 'playing')
     g.basketX = clamp(toGameX(e.clientX), 46, W - 46);
 });
 
-// Touch: re-attach directly so we get the events even when overlay is showing
+// Basket drag — passive so it doesn't interfere with button taps
 wrapEl.addEventListener('touchmove', e => {
   if (g.phase === 'playing')
     g.basketX = clamp(toGameX(e.touches[0].clientX), 46, W - 46);
